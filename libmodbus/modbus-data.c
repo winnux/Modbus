@@ -19,7 +19,7 @@
 #ifndef _MSC_VER
 #include <stdint.h>
 #else
-#include "stdint.h"
+#include "win-defs/stdint.h"
 #endif
 #include <string.h>
 #include <assert.h>
