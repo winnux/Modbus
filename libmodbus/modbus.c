@@ -171,7 +171,9 @@ static int send_msg(modbus_t *ctx, uint8_t *req, int req_length)
         errno = EMBBADDATA;
         return -1;
     }
-
+    /**/
+    busMonitorSendData(req,req_length);
+    /**/
     return rc;
 }
 
@@ -338,7 +340,7 @@ static int receive_msg(modbus_t *ctx, uint8_t *msg, msg_type_t msg_type)
         }
 
 		// -- BEGIN QMODBUS MODIFICATION --
-		busMonitorRawData( p_msg, rc, ( step == _STEP_DATA && length_to_read-rc == 0 ) ? 1 : 0 );
+		busMonitorRecvData( p_msg, rc, ( step == _STEP_DATA && length_to_read-rc == 0 ) ? 1 : 0 );
 		// -- END QMODBUS MODIFICATION --
 
         /* Display the hex code of each character received */
@@ -424,11 +426,11 @@ static int receive_msg_req(modbus_t *ctx, uint8_t *req, uint8_t *rsp)
     int offset = ctx->backend->header_length;
 
 	// -- BEGIN QMODBUS MODIFICATION --
-	int s_crc = 0; // TODO
-	busMonitorAddItem( 1, req[0], req[1],
-							( req[2] << 8 ) + req[3],
-							( req[4] << 8 ) + req[5],
-							s_crc, s_crc );
+//	int s_crc = 0; // TODO
+//	busMonitorAddItem( 1, req[0], req[1],
+//							( req[2] << 8 ) + req[3],
+//							( req[4] << 8 ) + req[5],
+//							s_crc, s_crc );
 	// -- END QMODBUS MODIFICATION --
 
     rc = receive_msg(ctx, rsp, MSG_CONFIRMATION);
@@ -511,13 +513,13 @@ static int receive_msg_req(modbus_t *ctx, uint8_t *req, uint8_t *rsp)
 			default:
 				break;
 		}
-		busMonitorAddItem( 0, rsp[offset-1], rsp[offset+0],
-						   addr, num_items,
-							ctx->last_crc_expected,
-							ctx->last_crc_received
-					//		( rsp[offset+req_nb_value+4] << 8 ) |
-					//			rsp[offset+req_nb_value+5]
-);
+//		busMonitorAddItem( 0, rsp[offset-1], rsp[offset+0],
+//						   addr, num_items,
+//							ctx->last_crc_expected,
+//							ctx->last_crc_received
+//					//		( rsp[offset+req_nb_value+4] << 8 ) |
+//					//			rsp[offset+req_nb_value+5]
+//);
 
         if (req_nb_value == rsp_nb_value) {
             rc = rsp_nb_value;
@@ -1603,14 +1605,14 @@ void modbus_poll(modbus_t* ctx)
             addr = ( msg[o+2] << 8 ) | msg[o+3];
             nb = ( msg[o+4] << 8 ) | msg[o+5];
         }
-        busMonitorAddItem( isQuery,				/* is query */
-                    slave,				/* slave */
-                    func,				/* func */
-                    addr,				/* addr */
-                    nb,				/* nb */
-                    ctx->last_crc_expected,
-                    ctx->last_crc_received
-                    //( msg[msg_len-2] << 8 ) | msg[msg_len-1]	/* CRC */
-                );
+//        busMonitorAddItem( isQuery,				/* is query */
+//                    slave,				/* slave */
+//                    func,				/* func */
+//                    addr,				/* addr */
+//                    nb,				/* nb */
+//                    ctx->last_crc_expected,
+//                    ctx->last_crc_received
+//                    //( msg[msg_len-2] << 8 ) | msg[msg_len-1]	/* CRC */
+//                );
     }
 }

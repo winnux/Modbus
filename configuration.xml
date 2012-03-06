@@ -1,0 +1,30 @@
+<Config>
+	<BusTotal>1</BusTotal>
+	<Lines>
+		<Bus>
+			<Comm>
+				<Port>1</Port>
+				<Baud>9600</Baud>
+				<DataBits>8</DataBits>
+				<StopBits>1</StopBits>
+				<Parity>N</Parity>
+			</Comm>
+			<Modules>
+				<Module>
+					<Addr>1</Addr>
+					<Reqs>
+						<Request>
+							<ReqType>3</ReqType>
+							<ReqRegister>1</RegRegister>
+							<ReqNum>10</ReqNum>
+							<DataParses>
+								<Parse>									
+								</Parse>
+							</DataParses>
+						</Request>
+					</Reqs>				
+				</Module>
+			</Modules>			
+		</Bus>
+	</Lines>
+</Config>
