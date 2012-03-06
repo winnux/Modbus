@@ -103,7 +103,7 @@ void busMonitorRecvData( uint8_t * data, uint8_t dataLen, uint8_t addNewline )
 
 }
 #if defined(_WIN32)
-bool __stdcall controlHandler(int t)
+BOOL WINAPI controlHandler(DWORD t)
 {
     if(t==CTRL_BREAK_EVENT||t==CTRL_C_EVENT)
         bQuit = true ;

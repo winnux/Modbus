@@ -21,7 +21,7 @@
 #ifndef _MSC_VER
 #include <stdint.h>
 #else
-#include "win-defs/stdint.h"
+#include <stdint.h>
 #endif
 
 #if defined(_WIN32)

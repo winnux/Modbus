@@ -17,8 +17,6 @@ HEADERS += \
     libmodbus/modbus-rtu.h \
     libmodbus/modbus-private.h \
     libmodbus/modbus.h \
-    libmodbus/win-defs/stdint.h \
-    libmodbus/win-defs/inttypes.h \
     config.h
 win32{
     INCLUDEPATH += E:\boost_1_49_0

@@ -22,7 +22,7 @@
 # include <stdint.h>
 # include <sys/time.h>
 #else
-# include "win-defs/stdint.h"
+#include <stdint.h>
 # include <time.h>
 #endif
 #include <sys/types.h>

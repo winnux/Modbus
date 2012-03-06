@@ -27,7 +27,7 @@ typedef int ssize_t;
 #include <stdint.h>
 #include <sys/time.h>
 #else
-#include "win-defs/stdint.h"
+#include <stdint.h>
 #include <time.h>
 #endif
 
