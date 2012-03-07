@@ -17,7 +17,8 @@ HEADERS += \
     libmodbus/modbus-rtu.h \
     libmodbus/modbus-private.h \
     libmodbus/modbus.h \
-    config.h
+    config.h \
+    NetServer.h
 win32{
     INCLUDEPATH += E:\boost_1_49_0
 
@@ -30,7 +31,7 @@ win32{
 unix{
     INCLUDEPATH += /home/lihaibo/dev/boost_1_49_0
     LIBS += /home/lihaibo/dev/boost_1_49_0/stage/lib/libboost_thread.a
-    LIBS += -lpthread
+    LIBS += -lpthread -lboost_system
 }
 INCLUDEPATH +=libmodbus
 win32:LIBS +=ws2_32.lib

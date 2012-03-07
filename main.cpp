@@ -3,69 +3,70 @@
 #include <exception>
 #include "modbus.h"
 #include "modbus-private.h"
+#include "NetServer.h"
 #include "config.h"
+
 #ifndef _MSC_VER
 #include <signal.h>
 #endif
+
 #define BOOST_DATE_TIME_NO_LIB
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/interprocess/mapped_region.hpp>
-#include <boost/circular_buffer.hpp>
-#include <boost/thread.hpp>
+
+
+
 
 using namespace boost::interprocess;
 using namespace std;
+using boost::asio::ip::tcp;
 
-char * byteToHexMap[256] = {
-  "00", "01", "02", "03", "04", "05", "06", "07", "08", "09",
-  "0a", "0b", "0c", "0d", "0e", "0f", "10", "11", "12", "13",
-  "14", "15", "16", "17", "18", "19", "1a", "1b", "1c", "1d",
-  "1e", "1f", "20", "21", "22", "23", "24", "25", "26", "27",
-  "28", "29", "2a", "2b", "2c", "2d", "2e", "2f", "30", "31",
-  "32", "33", "34", "35", "36", "37", "38", "39", "3a", "3b",
-  "3c", "3d", "3e", "3f", "40", "41", "42", "43", "44", "45",
-  "46", "47", "48", "49", "4a", "4b", "4c", "4d", "4e", "4f",
-  "50", "51", "52", "53", "54", "55", "56", "57", "58", "59",
-  "5a", "5b", "5c", "5d", "5e", "5f", "60", "61", "62", "63",
-  "64", "65", "66", "67", "68", "69", "6a", "6b", "6c", "6d",
-  "6e", "6f", "70", "71", "72", "73", "74", "75", "76", "77",
-  "78", "79", "7a", "7b", "7c", "7d", "7e", "7f", "80", "81",
-  "82", "83", "84", "85", "86", "87", "88", "89", "8a", "8b",
-  "8c", "8d", "8e", "8f", "90", "91", "92", "93", "94", "95",
-  "96", "97", "98", "99", "9a", "9b", "9c", "9d", "9e", "9f",
-  "a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9",
-  "aa", "ab", "ac", "ad", "ae", "af", "b0", "b1", "b2", "b3",
-  "b4", "b5", "b6", "b7", "b8", "b9", "ba", "bb", "bc", "bd",
-  "be", "bf", "c0", "c1", "c2", "c3", "c4", "c5", "c6", "c7",
-  "c8", "c9", "ca", "cb", "cc", "cd", "ce", "cf", "d0", "d1",
-  "d2", "d3", "d4", "d5", "d6", "d7", "d8", "d9", "da", "db",
-  "dc", "dd", "de", "df", "e0", "e1", "e2", "e3", "e4", "e5",
-  "e6", "e7", "e8", "e9", "ea", "eb", "ec", "ed", "ee", "ef",
-  "f0", "f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9",
-  "fa", "fb", "fc", "fd", "fe", "ff",
-};
 
-struct RAW_COMM_DATA
-{
-    uint8_t data[255];
-    uint8_t length ;
-};
-boost::circular_buffer<RAW_COMM_DATA> rawCommDatas ;
+//typedef boost::shared_ptr<tcp::socket> socket_ptr;
+
+
+
+
 bool bQuit = false ;
+bool showCommData =false ;
+
 
 Config config ;
 vector < boost::shared_ptr<boost::thread> > threads ;
 
+int getCommPortByAddr(uint8_t addr)
+{
+        for(size_t n = 0;n<config.busLines.size();n++)
+        {
+            for(size_t m = 0 ;m<config.busLines[n].modules.size() ;m++)
+            {
+                if(addr == config.busLines[n].modules[m].addr)
+                    return n+1 ;
+            }
+        }
+}
+
 extern "C" {
 
-//void busMonitorAddItem( uint8_t isRequest, uint8_t slave, uint8_t func, uint16_t addr, uint16_t nb, uint16_t expectedCRC, uint16_t actualCRC )
 void busMonitorSendData(uint8_t *data,uint8_t dataLen)
 {
-    for(uint8_t i = 0 ; i< dataLen; i++)
+    int com = getCommPortByAddr(data[0]) ;
+    RAW_COMM_DATA raw ;
+    raw.add = 0 ;
+    raw.length = dataLen ;
+    memcpy(raw.data,data,dataLen) ;
     {
-        cout<<byteToHexMap[data[i]]<<" ";
+        boost::mutex::scoped_lock lock(commData_mutex) ;
+        rawCommDatas[com].push_back(raw);
     }
-    cout<<endl;
+    if(showCommData )
+    {
+        for(uint8_t i = 0 ; i< dataLen; i++)
+        {
+            printf("%.2X ", data[i]);
+        }
+        printf("\n");
+    }
 
     //try{
 
@@ -87,18 +88,28 @@ void busMonitorSendData(uint8_t *data,uint8_t dataLen)
     //}
 }
 
-void busMonitorRecvData( uint8_t * data, uint8_t dataLen, uint8_t addNewline )
+void busMonitorRecvData(uint8_t * data, uint8_t dataLen,int addNewLine )
 {
+    int com = getCommPortByAddr(data[0]) ;
     RAW_COMM_DATA raw ;
+    raw.add = addNewLine ;
     raw.length = dataLen ;
     memcpy(raw.data,data,dataLen) ;
-    rawCommDatas.push_back(raw);
-    for(uint8_t i = 0 ; i< dataLen; i++)
     {
-        cout<<byteToHexMap[data[i]]<<" ";
+        boost::mutex::scoped_lock lock(commData_mutex) ;
+        rawCommDatas[com].push_back(raw);
     }
-    if(addNewline)
-        cout<<endl ;
+
+
+    if(showCommData)
+    {
+        for(uint8_t i = 0 ; i< dataLen; i++)
+        {
+            printf("%.2X ",data[i]);
+        }
+        if(addNewLine)
+            printf("\n");
+    }
 }
 
 }
@@ -185,6 +196,92 @@ void breakHandle()
     }
 #endif
 }
+//void netSessionThread(socket_ptr sock)
+//{
+//    try
+//    {
+//        char data[10240];
+//        while (!bQuit)
+//        {
+
+
+//            boost::system::error_code error;
+//            size_t length = sock->read_some(boost::asio::buffer(data), error);
+//            if (error == boost::asio::error::eof)
+//                break; // Connection closed cleanly by peer.
+//            else if (error)
+//                throw boost::system::system_error(error); // Some other error.
+//            //send:0x71、 端口号（1，2..)、0x00、0x00、0x00、0x00、0x00、0x00
+//            //reply: 0x81、端口号（1，2..)、长度高、长度低、0x00、0x00、0x00、0x00
+//            //err reply: echo
+//            if(data[0] == 0x71)
+//            {
+//                int com = data[1] ;
+//                if(rawCommDatas.find(com)!=rawCommDatas.end())
+//                {
+//                    {
+//                        data[0] = 0x81 ;
+//                        length = 8 ;
+//                        boost::mutex::scoped_lock lock(commData_mutex);
+//                        for(size_t i = 0 ;i < rawCommDatas[com].size()&&length<10000 ;i++)
+//                        {
+//                            memcpy(data+length,rawCommDatas[com][i].data,rawCommDatas[com][i].length) ;
+//                            length += rawCommDatas[com][i].length ;
+
+//                        }
+//                        rawCommDatas[com].clear() ;
+//                    }
+
+//                    boost::asio::write(*sock, boost::asio::buffer(data, length));
+//                }
+//                else
+//                {
+//                    //没有要查询的端口通讯数据
+//                    boost::asio::write(*sock, boost::asio::buffer(data, length));
+//                }
+//            }
+//            else
+//            {
+//                //未识别命令,echo it
+//                boost::asio::write(*sock, boost::asio::buffer(data, length));
+//            }
+//        }
+//    }
+//    catch (std::exception& e)
+//    {
+//        std::cerr << "Exception in thread: " << e.what() << "\n";
+//    }
+//}
+
+//comm data monitor server thread
+void monitorThread()
+{
+    boost::asio::io_service io_service;
+//    vector < boost::shared_ptr<boost::thread> > t ;
+//    tcp::acceptor a(io_service,tcp::endpoint(tcp::v4(),LISTEN_PORT));
+//    while(!bQuit)
+//    {
+//        socket_ptr sock(new tcp::socket(io_service));
+//        a.accept(*sock);
+//        boost::shared_ptr<boost::thread>  thread(new boost::thread(boost::bind(netSessionThread,sock)));
+//        t.push_back(thread);
+//    }
+//    for(size_t i = 0 ;i < t.size();i++)
+//        t[i]->join();
+    try
+    {
+        server s(io_service, LISTEN_PORT);
+        while(!bQuit)
+        {
+            io_service.poll();
+            boost::this_thread::sleep(boost::posix_time::milliseconds(1)) ;
+        }
+        io_service.stop();
+    }catch(std::exception &e)
+    {
+        cout<<"Exception:"<<e.what()<<endl ;
+    }
+}
 
 int main()
 {
@@ -199,19 +296,36 @@ int main()
 
     cout<<config.bus_number<<endl ;
 
+
+
+    //启动通道数据监视监听线程，默认监听端口10010
+    boost::shared_ptr<boost::thread> thread(new boost::thread (monitorThread));
+    threads.push_back(thread);
+
+    //根据配置信息分别启动各个串行口的数据采集线程
     for(int i = 0 ;i < config.bus_number ;i++)
     {
+        boost::circular_buffer<RAW_COMM_DATA> datas(256) ;
+        rawCommDatas[i+1] = datas ;
         boost::shared_ptr<boost::thread> thread(new boost::thread (boost::bind(workerThread,&config.busLines[0])));
         threads.push_back(thread);
     }
 
+    //循环处理用户终端输入，q--退出；d-- 显示报文； p-- 停止显示报文
+    //TODO：终端显示报文未同步，多个串口采集时显示报文可能乱序
     char s = 0;
     while(s!='q')
     {
         cin>>s  ;
+        if(s =='p')
+            showCommData = false ;
+        else if(s=='d')
+            showCommData = true ;
         boost::this_thread::sleep(boost::posix_time::milliseconds(100));
     }
+
     bQuit = true ;
+    //等待所有工作线程退出
     for(size_t i = 0 ;i < threads.size();i++)
         threads[i]->join();
     return 0;
