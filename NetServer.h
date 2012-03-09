@@ -15,7 +15,7 @@ struct RAW_COMM_DATA
 {
     uint8_t data[255];
     uint8_t length ;
-    uint8_t add ;
+    uint8_t isRecv ;
 };
 
 map<int,boost::circular_buffer<RAW_COMM_DATA> > rawCommDatas ;
@@ -44,7 +44,7 @@ public:
 
 private:
   //send:0x71、 端口号（1，2..)、0x00、0x00、0x00、0x00、0x00、0x00
-  //eply: 0x81、端口号（1，2..)、长度高、长度低、0x00、0x00、0x00、0x00
+  //eply: 0x61、端口号（1，2..)、长度高、长度低、0x00、0x00、0x00、0x00
   //err reply: echo
   void on_data_recv(size_t bytes_transferred)
   {
@@ -57,27 +57,33 @@ private:
           if(rawCommDatas.find(com)!=rawCommDatas.end())
           {
               {
-                  data_[0] = 0x81 ;
-                  length = 8 ;
+                  data_[0] = 0x61 ;
+                  length = 0 ;
                   boost::mutex::scoped_lock lock(commData_mutex);
 
-                  for(size_t i = 0 ;i < rawCommDatas[com].size()&&length<10000 ;i++)
+                  for(size_t i = 0 ;i < rawCommDatas[com].size()&&length<max_length ;i++)
                   {
-                      memcpy(data_+length,rawCommDatas[com][i].data,rawCommDatas[com][i].length) ;
+                      memcpy(data_+8+length,rawCommDatas[com][i].data,rawCommDatas[com][i].length) ;
                       length += rawCommDatas[com][i].length ;
-                      if(rawCommDatas[com][i].add)
+                      if(rawCommDatas[com][i].isRecv)
                       {
-                          data_[length++]  = 0x20 ;//每个完整命令后增加一个空格
+                          data_[8+length]  = ';' ;//每个接收后增加一个分号标志
+                          length++ ;
+                      }else
+                      {
+                          data_[8+length] =',';    //每个发送后加一个逗号
+                          length++;
                       }
                   }
                   rawCommDatas[com].clear() ;
               }
-              data_[2] = length%256 ;
-              data_[3] = length/256 ;
+
+              data_[2] = length/256 ;
+              data_[3] = length%256 ;
           }
       }
       boost::asio::async_write(socket_,
-               boost::asio::buffer(data_, length),
+               boost::asio::buffer(data_, length+8),
                boost::bind(&session::handle_write, this,
                  boost::asio::placeholders::error));
 
@@ -116,7 +122,7 @@ private:
   }
 
   tcp::socket socket_;
-  enum { max_length = 10240 };
+  enum { max_length = 4080 };
   char data_[max_length];
 };
 

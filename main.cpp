@@ -29,7 +29,7 @@ using boost::asio::ip::tcp;
 
 bool bQuit = false ;
 bool showCommData =false ;
-
+RAW_COMM_DATA recv_raw ;
 
 Config config ;
 vector < boost::shared_ptr<boost::thread> > threads ;
@@ -52,8 +52,8 @@ void busMonitorSendData(uint8_t *data,uint8_t dataLen)
 {
     int com = getCommPortByAddr(data[0]) ;
     RAW_COMM_DATA raw ;
-    raw.add = 0 ;
     raw.length = dataLen ;
+    raw.isRecv = 0 ;
     memcpy(raw.data,data,dataLen) ;
     {
         boost::mutex::scoped_lock lock(commData_mutex) ;
@@ -90,15 +90,23 @@ void busMonitorSendData(uint8_t *data,uint8_t dataLen)
 
 void busMonitorRecvData(uint8_t * data, uint8_t dataLen,int addNewLine )
 {
-    int com = getCommPortByAddr(data[0]) ;
-    RAW_COMM_DATA raw ;
-    raw.add = addNewLine ;
-    raw.length = dataLen ;
-    memcpy(raw.data,data,dataLen) ;
+    memcpy(recv_raw.data+recv_raw.length,data,dataLen);
+    recv_raw.length += dataLen ;
+    if(addNewLine)
     {
-        boost::mutex::scoped_lock lock(commData_mutex) ;
-        rawCommDatas[com].push_back(raw);
+        recv_raw.isRecv = 1 ;
+        int com = getCommPortByAddr(recv_raw.data[0]) ;
+        {
+            boost::mutex::scoped_lock lock(commData_mutex) ;
+            rawCommDatas[com].push_back(recv_raw);
+        }
+        recv_raw.length = 0;
     }
+//    int com = getCommPortByAddr(data[0]) ;
+  //  raw.add = addNewLine ;
+    //raw.length = dataLen ;
+    //memcpy(raw.data,data,dataLen) ;
+
 
 
     if(showCommData)
@@ -176,7 +184,7 @@ void workerThread(void* p)
                 }
 
 
-                boost::this_thread::sleep(boost::posix_time::milliseconds(10));
+                boost::this_thread::sleep(boost::posix_time::milliseconds(100));
             }
         }
     }
@@ -196,78 +204,13 @@ void breakHandle()
     }
 #endif
 }
-//void netSessionThread(socket_ptr sock)
-//{
-//    try
-//    {
-//        char data[10240];
-//        while (!bQuit)
-//        {
 
-
-//            boost::system::error_code error;
-//            size_t length = sock->read_some(boost::asio::buffer(data), error);
-//            if (error == boost::asio::error::eof)
-//                break; // Connection closed cleanly by peer.
-//            else if (error)
-//                throw boost::system::system_error(error); // Some other error.
-//            //send:0x71、 端口号（1，2..)、0x00、0x00、0x00、0x00、0x00、0x00
-//            //reply: 0x81、端口号（1，2..)、长度高、长度低、0x00、0x00、0x00、0x00
-//            //err reply: echo
-//            if(data[0] == 0x71)
-//            {
-//                int com = data[1] ;
-//                if(rawCommDatas.find(com)!=rawCommDatas.end())
-//                {
-//                    {
-//                        data[0] = 0x81 ;
-//                        length = 8 ;
-//                        boost::mutex::scoped_lock lock(commData_mutex);
-//                        for(size_t i = 0 ;i < rawCommDatas[com].size()&&length<10000 ;i++)
-//                        {
-//                            memcpy(data+length,rawCommDatas[com][i].data,rawCommDatas[com][i].length) ;
-//                            length += rawCommDatas[com][i].length ;
-
-//                        }
-//                        rawCommDatas[com].clear() ;
-//                    }
-
-//                    boost::asio::write(*sock, boost::asio::buffer(data, length));
-//                }
-//                else
-//                {
-//                    //没有要查询的端口通讯数据
-//                    boost::asio::write(*sock, boost::asio::buffer(data, length));
-//                }
-//            }
-//            else
-//            {
-//                //未识别命令,echo it
-//                boost::asio::write(*sock, boost::asio::buffer(data, length));
-//            }
-//        }
-//    }
-//    catch (std::exception& e)
-//    {
-//        std::cerr << "Exception in thread: " << e.what() << "\n";
-//    }
-//}
 
 //comm data monitor server thread
 void monitorThread()
 {
     boost::asio::io_service io_service;
-//    vector < boost::shared_ptr<boost::thread> > t ;
-//    tcp::acceptor a(io_service,tcp::endpoint(tcp::v4(),LISTEN_PORT));
-//    while(!bQuit)
-//    {
-//        socket_ptr sock(new tcp::socket(io_service));
-//        a.accept(*sock);
-//        boost::shared_ptr<boost::thread>  thread(new boost::thread(boost::bind(netSessionThread,sock)));
-//        t.push_back(thread);
-//    }
-//    for(size_t i = 0 ;i < t.size();i++)
-//        t[i]->join();
+
     try
     {
         server s(io_service, LISTEN_PORT);
@@ -305,7 +248,7 @@ int main()
     //根据配置信息分别启动各个串行口的数据采集线程
     for(int i = 0 ;i < config.bus_number ;i++)
     {
-        boost::circular_buffer<RAW_COMM_DATA> datas(256) ;
+        boost::circular_buffer<RAW_COMM_DATA> datas(16) ;
         rawCommDatas[i+1] = datas ;
         boost::shared_ptr<boost::thread> thread(new boost::thread (boost::bind(workerThread,&config.busLines[0])));
         threads.push_back(thread);
