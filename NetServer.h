@@ -10,6 +10,7 @@
 using namespace std ;
 using boost::asio::ip::tcp;
 #define LISTEN_PORT     10010
+#define MAX_PORT_NUM    16
 
 struct RAW_COMM_DATA
 {
@@ -20,7 +21,7 @@ struct RAW_COMM_DATA
 
 map<int,boost::circular_buffer<RAW_COMM_DATA> > rawCommDatas ;
 
-boost::mutex commData_mutex;
+boost::mutex commData_mutex[MAX_PORT_NUM];
 class session
 {
 public:
@@ -59,7 +60,7 @@ private:
               {
                   data_[0] = 0x61 ;
                   length = 0 ;
-                  boost::mutex::scoped_lock lock(commData_mutex);
+                  boost::mutex::scoped_lock lock(commData_mutex[com]);
 
                   for(size_t i = 0 ;i < rawCommDatas[com].size()&&length<max_length ;i++)
                   {

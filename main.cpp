@@ -15,7 +15,7 @@
 #include <boost/interprocess/mapped_region.hpp>
 
 
-
+#define MAX_CACHE_COMMDATA_NUM   16
 
 using namespace boost::interprocess;
 using namespace std;
@@ -56,7 +56,7 @@ void busMonitorSendData(uint8_t *data,uint8_t dataLen)
     raw.isRecv = 0 ;
     memcpy(raw.data,data,dataLen) ;
     {
-        boost::mutex::scoped_lock lock(commData_mutex) ;
+        boost::mutex::scoped_lock lock(commData_mutex[com]) ;
         rawCommDatas[com].push_back(raw);
     }
     if(showCommData )
@@ -97,7 +97,7 @@ void busMonitorRecvData(uint8_t * data, uint8_t dataLen,int addNewLine )
         recv_raw.isRecv = 1 ;
         int com = getCommPortByAddr(recv_raw.data[0]) ;
         {
-            boost::mutex::scoped_lock lock(commData_mutex) ;
+            boost::mutex::scoped_lock lock(commData_mutex[com]) ;
             rawCommDatas[com].push_back(recv_raw);
         }
         recv_raw.length = 0;
@@ -248,7 +248,7 @@ int main()
     //根据配置信息分别启动各个串行口的数据采集线程
     for(int i = 0 ;i < config.bus_number ;i++)
     {
-        boost::circular_buffer<RAW_COMM_DATA> datas(16) ;
+        boost::circular_buffer<RAW_COMM_DATA> datas(MAX_CACHE_COMMDATA_NUM) ;
         rawCommDatas[i+1] = datas ;
         boost::shared_ptr<boost::thread> thread(new boost::thread (boost::bind(workerThread,&config.busLines[0])));
         threads.push_back(thread);
