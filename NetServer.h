@@ -1,5 +1,6 @@
 #ifndef NETSERVER_H
 #define NETSERVER_H
+#define BOOST_DATE_TIME_NO_LIB
 #include <boost/bind.hpp>
 #include <boost/asio.hpp>
 #include <boost/circular_buffer.hpp>

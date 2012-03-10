@@ -18,7 +18,16 @@
 							<ReqRegister>1</RegRegister>
 							<ReqNum>10</ReqNum>
 							<DataParses>
-								<Parse>									
+								<Parse>		
+									<DataNums>5</DataNums>
+									<PowerType>2</PowerType>
+									<StartIndex>0</StartIndex>
+									<DataSize>16</DataSize>
+									<DataOrder>21</DataOrder>
+									<DataType>1</DataType>
+									<BaseVar>0</BaseVar>
+									<MulVar>1</MulVar>
+									<DeadBand>0.5</DeadBand>							
 								</Parse>
 							</DataParses>
 						</Request>

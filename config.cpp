@@ -14,6 +14,7 @@ bool Config::load()
     BOOST_FOREACH(ptree::value_type &v,pt.get_child("Config.Lines"))
     {
         Bus bus ;
+
         bus.port = v.second.get<int>("Comm.Port");
 #if defined(_WIN32)
         sprintf(bus.sPort,"COM%d",bus.port);
@@ -34,12 +35,35 @@ bool Config::load()
                 r.reqType = v2.second.get<int>("ReqType");
                 r.reg = v2.second.get<int>("ReqRegister");
                 r.num = v2.second.get<int>("ReqNum");
+                BOOST_FOREACH(ptree::value_type &v3,v2.second.get_child("DataParses"))
+                {
+                    Parse p ;
+                    p.dataNums = v3.second.get<int>("DataNums");
+                    p.baseVar = v3.second.get<float>("BaseVar");
+                    p.dataOrder = v3.second.get<int>("DataOrder");
+                    p.dataSize = v3.second.get<int>("DataSize");
+                    p.dataType = v3.second.get<int>("DataType");
+                    p.deadBand = v3.second.get<float>("DeadBand");
+                    p.mulVar = v3.second.get<float>("MulVar");
+                    p.startIndex =v3.second.get<int>("StartIndex");
+                    p.powerType = v3.second.get<int>("PowerType");
+                    r.parses.push_back(p);
+                    r.dataNums[p.powerType-1] += p.dataNums ;
+                }
+
                 m.reqs.push_back(r);
+                for(int i = 0 ; i< END ;i++)
+                    m.dataNums[i] += r.dataNums[i];
             }
             bus.modules.push_back(m);
+            for(int i =0 ;i < END ;i++)
+                bus.dataNums[i]  += m.dataNums[i] ;
+
         }
 
         busLines.push_back(bus);
+        for(int i = 0; i< END ;i++)
+            dataNums[i] = bus.dataNums[i];
     }
 
     return true ;

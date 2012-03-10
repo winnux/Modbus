@@ -10,7 +10,7 @@
 #include <signal.h>
 #endif
 
-#define BOOST_DATE_TIME_NO_LIB
+
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/interprocess/mapped_region.hpp>
 
@@ -182,7 +182,14 @@ void workerThread(void* p)
                     ret = modbus_read_input_registers( modbus, bus->modules[i].reqs[j].reg, bus->modules[i].reqs[j].num, dest16 );
                     break;
                 }
+                //parse data
+                if(ret!=-1)
+                {
+                    for(size_t n = 0 ; n < bus->modules[i].reqs[j].parses.size();n++)
+                    {
 
+                    }
+                }
 
                 boost::this_thread::sleep(boost::posix_time::milliseconds(100));
             }

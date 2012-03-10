@@ -24,8 +24,12 @@ win32{
 
     CONFIG(debug,debug|release){
         LIBS +=E:\boost_1_49_0\stage\lib\libboost_thread-vc100-mt-gd-1_49.lib
+        LIBS +=E:\boost_1_49_0\stage\lib\libboost_system-vc100-mt-gd-1_49.lib
+        LIBS += E:\boost_1_49_0\stage\lib\libboost_regex-vc100-mt-gd-1_49.lib
     }else{
        LIBS +=E:\boost_1_49_0\stage\lib\libboost_thread-vc100-mt-1_49.lib
+        LIBS +=E:\boost_1_49_0\stage\lib\libboost_system-vc100-mt-1_49.lib
+        LIBS += E:\boost_1_49_0\stage\lib\libboost_regex-vc100-mt-1_49.lib
     }
 }
 unix{

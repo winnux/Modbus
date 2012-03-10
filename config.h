@@ -2,6 +2,8 @@
 #define CONFIG_H
 #include <vector>
 using namespace std;
+
+enum PowerDataType{yx,yc,dd,END};
 struct Parse
 {
 public:
@@ -15,32 +17,54 @@ public:
     float  mulVar ;      //乘数
     float  deadBand ;    //死区
 };
+class ConfObjectException : public std::exception
+{
 
-struct Request
+};
+
+class  AbstractConfObject
+{
+public:
+    AbstractConfObject(){
+        for(int i= 0 ;i< END ;i++)
+            dataNums [i] = 0 ;
+    }
+public:
+    virtual void check() = 0 ;
+public:
+      int dataNums[END] ;
+
+};
+
+class  Request: public AbstractConfObject
 {
 public:
     int reqType ;
     int reg;
     int num ;
 
-    int yxNum ;         //本桢内遥信数量
-    int ycNum ;
-    int ddNum ;
+public:
+    void check(){
+    }
+
     vector<Parse> parses ;
 };
 
-struct Module
+class Module: public AbstractConfObject
 {
+
 public:
     int     addr ;
 
-    int     yxNum ;     //本装置内遥信数量
-    int     ycNum ;
-    int     ddNum ;
+public:
+    void check(){
+        for(size_t n = 0 ;n<reqs.size();n++)
+            reqs[n].check();
+    }
     vector<Request> reqs ;
 };
 
-struct Bus
+class Bus: public AbstractConfObject
 {
 public:
 
@@ -51,22 +75,30 @@ public:
     int           stopbits ;
     char          parity ;
 
-    int           yxNum ;       //本物理端口遥信数量
-    int           ycNum ;
-    int           ddNum ;
+
+
+public:
+    void check(){
+        for(size_t n = 0 ;n<modules.size();n++)
+            modules[n].check();
+    }
     vector<Module> modules ;
 };
 
-class Config
+class Config: public AbstractConfObject
 {
 public:
     Config();
     vector<Bus> busLines ;
     int         bus_number ;
 
-    int         yxNum ;         //全部遥信数量
-    int         ycNum ;
-    int         ddNum ;
+public:
+    void check(){
+        for(size_t n = 0 ; n< busLines.size();n++)
+            busLines[n].check();
+    }
+
+
 public:
     bool load();
     bool save();
