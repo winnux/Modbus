@@ -8,6 +8,18 @@
 #include <vector>
 using namespace std;
 
+#define MAX_YX_NUM  10000
+#define MAX_YC_NUM  10000
+#define MAX_DD_NUM  1024
+
+#define YX_VAR_LEN  2
+#define YC_VAR_LEN  5
+#define DD_VAR_LEN  5
+
+#define TOTAL_MEM_REQ   (MAX_YX_NUM*YX_VAR_LEN+MAX_YC_NUM*YC_VAR_LEN+MAX_DD_NUM*DD_VAR_LEN)
+
+#define MAX_CACHE_COMMDATA_NUM   16
+
 enum PowerDataType{yx,yc,dd,END};
 struct Parse
 {
