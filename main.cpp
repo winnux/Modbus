@@ -235,6 +235,8 @@ void monitorThread()
 
 int main()
 {
+    //EZLOGGERVLSTREAM(axter::levels(axter::log_regularly,axter::debug))<<"Program started"<<std::endl ;
+    EZLOGGERVLSTREAM(axter::log_regularly)<<"Program started"<<std::endl ;
     breakHandle();
     try{
         config.load();
@@ -244,7 +246,8 @@ int main()
         return 1 ;
     }
 
-    cout<<config.bus_number<<endl ;
+    //cout<<config.bus_number<<endl ;
+
 
 
 
@@ -278,6 +281,8 @@ int main()
     //等待所有工作线程退出
     for(size_t i = 0 ;i < threads.size();i++)
         threads[i]->join();
+
+    EZLOGGERVLSTREAM(axter::log_regularly)<<"Program exited"<<std::endl ;
     return 0;
 }
 

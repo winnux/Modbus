@@ -18,7 +18,14 @@ HEADERS += \
     libmodbus/modbus-private.h \
     libmodbus/modbus.h \
     config.h \
-    NetServer.h
+    NetServer.h \
+    ezlogger/ezlogger_verbosity_level_policy.hpp \
+    ezlogger/ezlogger_output_policy.hpp \
+    ezlogger/ezlogger_misc.hpp \
+    ezlogger/ezlogger_macros.hpp \
+    ezlogger/ezlogger_headers.hpp \
+    ezlogger/ezlogger_format_policy.hpp \
+    ezlogger/ezlogger.hpp
 win32{
     INCLUDEPATH += E:\boost_1_49_0
 

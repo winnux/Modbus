@@ -1,5 +1,10 @@
 #ifndef CONFIG_H
 #define CONFIG_H
+
+#if defined(_WIN32)
+#include <Windows.h> //for getmodulefilename and NULL
+#endif
+#include "ezlogger/ezlogger_headers.hpp"
 #include <vector>
 using namespace std;
 
