@@ -8,6 +8,7 @@
 
 #ifndef _MSC_VER
 #include <signal.h>
+
 #endif
 
 
@@ -21,9 +22,9 @@ using namespace std;
 using boost::asio::ip::tcp;
 
 //Shared memory object pointer
-boost::shared_ptr<shared_memory_object>  sharedMem ;
+boost::shared_ptr<shared_memory_object>  sharedMem(new shared_memory_object(open_or_create,"MemoryCache",read_write)) ;
 //Each type has a memory map pointer
-boost::shared_ptr<mapped_region>    mmap[END] ;
+boost::shared_ptr<mapped_region>    map_ptr[END] ;
 
 bool bQuit = false ;
 bool showCommData =false ;
@@ -42,6 +43,7 @@ int getCommPortByAddr(uint8_t addr)
                     return n+1 ;
             }
         }
+        return -1 ;
 }
 
 extern "C" {
@@ -55,7 +57,8 @@ void busMonitorSendData(uint8_t *data,uint8_t dataLen)
     memcpy(raw.data,data,dataLen) ;
     {
         boost::mutex::scoped_lock lock(commData_mutex[com]) ;
-        rawCommDatas[com].push_back(raw);
+        if(rawCommDatas.find(com)!=rawCommDatas.end())
+            rawCommDatas[com].push_back(raw);
     }
     if(showCommData )
     {
@@ -77,7 +80,8 @@ void busMonitorRecvData(uint8_t * data, uint8_t dataLen,int addNewLine )
         int com = getCommPortByAddr(recv_raw.data[0]) ;
         {
             boost::mutex::scoped_lock lock(commData_mutex[com]) ;
-            rawCommDatas[com].push_back(recv_raw);
+            if(rawCommDatas.find(com)!=rawCommDatas.end())
+                rawCommDatas[com].push_back(recv_raw);
         }
         recv_raw.length = 0;
     }
@@ -166,7 +170,8 @@ void workerThread(void* p)
                 {
                     for(size_t n = 0 ; n < bus->modules[i].reqs[j].parses.size();n++)
                     {
-
+                        char* p = (char*)map_ptr[bus->modules[i].reqs[j].parses[n].powerType-1]->get_address();
+                        memcpy(p,dest16,bus->modules[i].reqs[j].num*2) ;
                     }
                 }
 
@@ -222,39 +227,48 @@ void freeSharedMemroy()
 bool initSharedMemory()
 {
     try{
-        sharedMem = new shared_memory_object(open_or_create,"MemoryCache",read_write);
         sharedMem->truncate(TOTAL_MEM_REQ);
-        mmap[0] = new mapped_region(*sharedMem,read_write,0,MAX_YX_NUM*YX_VAR_LEN);
-        mmap[1] = new mapped_region(*sharedMem,read_write,MAX_YX_NUM*YX_VAR_LEN,
-                                    MAX_YC_NUM*YC_VAR_LEN);
-        mmap[2] = new mapped_region(*sharedMem,read_write,MAX_YX_NUM*YX_VAR_LEN+MAX_YC_NUM*YC_VAR_LEN,
-                                    MAX_DD_NUM*DD_VAR_LEN);
+        boost::shared_ptr<mapped_region>  yx_ptr(new mapped_region(*sharedMem,read_write,0,MAX_YX_NUM*YX_VAR_LEN)) ;
+        boost::shared_ptr<mapped_region>  yc_ptr(new mapped_region(*sharedMem,read_write,MAX_YX_NUM*YX_VAR_LEN,
+                                                                   MAX_YC_NUM*YC_VAR_LEN)) ;
+        boost::shared_ptr<mapped_region>  dd_ptr(new mapped_region(*sharedMem,read_write,MAX_YX_NUM*YX_VAR_LEN+MAX_YC_NUM*YC_VAR_LEN,
+                                                                   MAX_DD_NUM*DD_VAR_LEN)) ;
+        map_ptr[0] = yx_ptr;
+        map_ptr[1] = yc_ptr;
+        map_ptr[2] = dd_ptr ;
+        yx_ptr.reset();
+        yc_ptr.reset();
+        dd_ptr.reset();
+
     }catch(interprocess_exception &e)
     {
-        EZLOGGERVLSTREAM(axter::levels(axter::log_always,axter::debug))<<e.what()<<std::endl ;
+        char p[256] ;
+        memcpy(p,e.what(),256);
+        EZLOGGERVLSTREAM(axter::levels(axter::log_always,axter::debug))<<p<<std::endl ;
         return false ;
     }
+
+
+
+//    try{
+
+//        shared_memory_object sharedMem(open_or_create,"Test",read_write);
+//        sharedMem.truncate(256);
+//        mapped_region mmap(sharedMem,read_write);
+
+//        memcpy(mmap.get_address(),&n,4);
+//        memcpy((char*)(mmap.get_address())+4,&m,4);
+//        memcpy((char*)(mmap.get_address())+8,&addr,sizeof(uint16_t));
+//        memcpy((char*)(mmap.get_address())+8+sizeof(uint16_t),&nb,sizeof(uint16_t));
+
+//        shared_memory_object::remove("Test");
+//    }
+//    catch(interprocess_exception &e)
+//    {
+//        /*shared_memory_object::remove("Test");*/
+//        cout<<e.what()<<endl;
+//    }
     return true ;
-
-
-    //try{
-
-    //	shared_memory_object sharedMem(open_or_create,"Test",read_write);
-    //	sharedMem.truncate(256);
-    //	mapped_region mmap(sharedMem,read_write);
-    //
-    //	memcpy(mmap.get_address(),&n,4);
-    //	memcpy((char*)(mmap.get_address())+4,&m,4);
-    //	memcpy((char*)(mmap.get_address())+8,&addr,sizeof(uint16_t));
-    //	memcpy((char*)(mmap.get_address())+8+sizeof(uint16_t),&nb,sizeof(uint16_t));
-
-    //	shared_memory_object::remove("Test");
-    //}
-    //catch(interprocess_exception &e)
-    //{
-    //	/*shared_memory_object::remove("Test");*/
-    //	cout<<e.what()<<endl;
-    //}
 }
 
 int main()
@@ -264,21 +278,19 @@ int main()
     if(!initSharedMemory())
     {
         EZLOGGERVLSTREAM(axter::log_regularly)<<"内存错误，退出"<<std::endl ;
-        return ;
+        return 1;
     }
     breakHandle();
     try{
         config.load();
     }catch(exception &e)
     {
-        cout<<e.what()<<endl ;
+        char p[256] ;
+        memcpy(p,e.what(),256);
+        cout<<p<<endl ;
+        EZLOGGERVLSTREAM(axter::levels(axter::log_regularly,axter::debug))<<p<<std::endl ;
         return 1 ;
     }
-
-    //cout<<config.bus_number<<endl ;
-
-
-
 
     //启动通道数据监视监听线程，默认监听端口10010
     boost::shared_ptr<boost::thread> thread(new boost::thread (monitorThread));

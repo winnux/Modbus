@@ -42,7 +42,7 @@ win32{
 unix{
     INCLUDEPATH += /home/lihaibo/dev/boost_1_49_0
     LIBS += /home/lihaibo/dev/boost_1_49_0/stage/lib/libboost_thread.a
-    LIBS += -lpthread -lboost_system
+    LIBS += -lpthread -lboost_system -lrt
 }
 INCLUDEPATH +=libmodbus
 win32:LIBS +=ws2_32.lib

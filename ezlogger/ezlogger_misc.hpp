@@ -20,7 +20,7 @@ namespace axter
 	*/
 	struct ext_data
 	{
-		ext_data(severity severity_level, const char* pretty_function = NULL, const char* facility = NULL, const char* tag = NULL, int code = 0)
+                ext_data(severity severity_level, const char* pretty_function = 0, const char* facility = 0, const char* tag = 0, int code = 0)
 			:m_severity_level(severity_level), m_pretty_function(pretty_function), m_facility(facility), m_tag(tag), m_code(code){}
 			severity m_severity_level;
 			const char* m_pretty_function;

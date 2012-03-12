@@ -15,7 +15,7 @@
 					<Reqs>
 						<Request>
 							<ReqType>3</ReqType>
-							<ReqRegister>1</RegRegister>
+							<ReqRegister>1</ReqRegister>
 							<ReqNum>10</ReqNum>
 							<DataParses>
 								<Parse>		

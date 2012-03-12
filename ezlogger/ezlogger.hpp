@@ -61,9 +61,9 @@ inserted into the logging.
 #include <sstream>
 #include <string>
 #include <stdio.h>
-
+#include <stdlib.h>
 #include "ezlogger_misc.hpp"
-
+#define EZLOGGER_EXCLUDE_CPRINT_METHOD
 namespace axter
 {
 	/*! @struct levels
@@ -110,45 +110,45 @@ namespace axter
 		}
 
 		template<typename T> inline ezlogger& operator<<(T& Data) {
-			if (m_verbosity_level <= get_verbosity_level_tolerance()) 
-			{
+                        if (m_verbosity_level <= this->get_verbosity_level_tolerance())
+                        {
 				if (m_alternate_output)
 					(*m_alternate_output) << Data;
 				else
-					get_log_stream() << Data;
+                                        this->get_log_stream() << Data;
 			}
 			return *this;
 		}
 		inline ezlogger& operator<<(std::ostream& (*func)(std::ostream&))
 		{
-			if (m_verbosity_level <= get_verbosity_level_tolerance())
+                        if (m_verbosity_level <= this->get_verbosity_level_tolerance())
 			{
 				if (m_alternate_output)
 					(*m_alternate_output) << func;
 				else
-					get_log_stream() << func;
+                                        this->get_log_stream() << func;
 			}
 			return *this;
 		}
 
 		template<class T> void operator()(const T&Data) const{
-			if (m_verbosity_level <= get_verbosity_level_tolerance()) 
+                        if (m_verbosity_level <= this->get_verbosity_level_tolerance())
 				log_out(m_src_file_name, m_src_line_num, m_src_function_name, m_levels_format_usage, true, Data);
 		}
 		template<class T1, class T2>
 			void operator()(const T1 &Data1, const T2 &Data2) const{
-			if (m_verbosity_level <= get_verbosity_level_tolerance()) 
+                        if (m_verbosity_level <= this->get_verbosity_level_tolerance())
 				log_out(m_src_file_name, m_src_line_num, m_src_function_name, m_levels_format_usage, true, Data1, Data2);
 		}
 		template<class T1, class T2, class T3>
 			void operator()(const T1 &Data1, const T2 &Data2, const T3 &Data3) const{
-			if (m_verbosity_level <= get_verbosity_level_tolerance()) 
+                        if (m_verbosity_level <= this->get_verbosity_level_tolerance())
 				log_out(m_src_file_name, m_src_line_num, m_src_function_name, m_levels_format_usage, true, Data1, Data2, Data3);
 		}
 #ifndef EZLOGGER_EXCLUDE_CPRINT_METHOD
 		void cprint(const char * format, ...)
 		{
-			if (m_verbosity_level <= get_verbosity_level_tolerance()) 
+                        if (m_verbosity_level <= this->get_verbosity_level_tolerance())
 			{
 				char Data[4096];
 				va_list v;
@@ -162,7 +162,7 @@ namespace axter
 		template<class T1>
 		void prg_main_arg(int argc, T1 argv)
 		{
-			if (m_verbosity_level <= get_verbosity_level_tolerance()) 
+                        if (m_verbosity_level <= this->get_verbosity_level_tolerance())
 			{
 				std::string Data = "main() arg(s) {";
 				for (int i = 0;i < argc;++i) {Data += " arg#" + to_str(i) + " = '" + to_str(argv[i]) + "' ";}
@@ -175,15 +175,15 @@ namespace axter
 		}
 		void display_stack()
 		{
-			if (m_verbosity_level <= get_verbosity_level_tolerance()) 
+                        if (m_verbosity_level <= this->get_verbosity_level_tolerance())
 			{
-				display_stack_main(m_src_line_num);
+                                this->display_stack_main(m_src_line_num);
 			}
 		}
 		bool log_if_fails_verification(bool eval, const char* evaluation)
 		{
-			if (!eval && m_verbosity_level <= get_verbosity_level_tolerance())
-				get_log_stream() << get_log_prefix_format(m_src_file_name, m_src_line_num, m_src_function_name, m_levels_format_usage) << 
+                        if (!eval && m_verbosity_level <= this->get_verbosity_level_tolerance())
+                                this->get_log_stream() << this->get_log_prefix_format(m_src_file_name, m_src_line_num, m_src_function_name, m_levels_format_usage) <<
 					"Failed verification:  '" << evaluation << "'" << std::endl;
 			return eval;
 		}
@@ -231,12 +231,12 @@ namespace axter
 		std::ostream*	m_alternate_output;
 		inline void common_constructor_imp(bool isstreamoutput)
 		{
-			if (isstreamoutput && m_verbosity_level <= get_verbosity_level_tolerance()) 
+                        if (isstreamoutput && m_verbosity_level <= this->get_verbosity_level_tolerance())
 			{
 				if (m_alternate_output) 
-					(*m_alternate_output) << get_log_prefix_format(m_src_file_name, m_src_line_num, m_src_function_name, m_levels_format_usage);
+                                        (*m_alternate_output) << this->get_log_prefix_format(m_src_file_name, m_src_line_num, m_src_function_name, m_levels_format_usage);
 				else
-					get_log_stream() << get_log_prefix_format(m_src_file_name, m_src_line_num, m_src_function_name, m_levels_format_usage);
+                                        this->get_log_stream() << this->get_log_prefix_format(m_src_file_name, m_src_line_num, m_src_function_name, m_levels_format_usage);
 			}
 		}
 
@@ -244,22 +244,22 @@ namespace axter
 			static void log_out(const char*FileName, int LineNo, const char*FunctionName, 
 			ext_data levels_format_usage_data, bool endline, const T &Data)
 		{
-			get_log_stream() << get_log_prefix_format(FileName, LineNo, FunctionName, levels_format_usage_data) << to_str(Data);
-			if (endline) get_log_stream() << std::endl;
+                        ezlogger_output_policy::get_log_stream() << ezlogger_format_policy::get_log_prefix_format(FileName, LineNo, FunctionName, levels_format_usage_data) << to_str(Data);
+                        if (endline) ezlogger_output_policy::get_log_stream() << std::endl;
 		}
 		template<class T1, class T2>
 		static void log_out(const char*FileName, int LineNo, const char*FunctionName, 
 		ext_data levels_format_usage_data, bool endline, const T1 &Data1, const T2 &Data2)
 		{
-			get_log_stream() << get_log_prefix_format(FileName, LineNo, FunctionName, levels_format_usage_data) << to_str(Data1) << ", "  << to_str(Data2);
-			if (endline) get_log_stream() << std::endl;
+                        ezlogger_output_policy::get_log_stream() << ezlogger_format_policy::get_log_prefix_format(FileName, LineNo, FunctionName, levels_format_usage_data) << to_str(Data1) << ", "  << to_str(Data2);
+                        if (endline)  ezlogger_output_policy::get_log_stream() << std::endl;
 		}
 		template<class T1, class T2, class T3>
 			static void log_out(const char*FileName, int LineNo, const char*FunctionName, 
 			ext_data levels_format_usage_data, bool endline, const T1 &Data1, const T2 &Data2, const T3 &Data3)
 		{
-			get_log_stream() << get_log_prefix_format(FileName, LineNo, FunctionName, levels_format_usage_data) << to_str(Data1) << ", "  << to_str(Data2) << ", "  << to_str(Data3);
-			if (endline) get_log_stream() << std::endl;
+                         ezlogger_output_policy::get_log_stream() << ezlogger_format_policy::get_log_prefix_format(FileName, LineNo, FunctionName, levels_format_usage_data) << to_str(Data1) << ", "  << to_str(Data2) << ", "  << to_str(Data3);
+                        if (endline)  ezlogger_output_policy::get_log_stream() << std::endl;
 		}
 	};
 

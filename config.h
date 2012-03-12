@@ -5,8 +5,12 @@
 #include <Windows.h> //for getmodulefilename and NULL
 #endif
 #include "ezlogger/ezlogger_headers.hpp"
+#include <string.h>
 #include <vector>
 using namespace std;
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/xml_parser.hpp>
+#include <boost/foreach.hpp>
 
 #define MAX_YX_NUM  10000
 #define MAX_YC_NUM  10000
@@ -37,6 +41,85 @@ public:
 class ConfObjectException : public std::exception
 {
 
+public:
+  ConfObjectException(int lo,int code) throw() {
+      exception_location = lo ;
+      exception_code = code ;
+
+  }
+
+  enum{bus,mod,req,other};
+private:
+    int     exception_location ;
+
+    int     exception_code ;
+public:
+
+    virtual const char* what() const throw()
+    {
+        char sz[256] ;
+        switch(exception_location)
+        {
+        case bus:
+            sprintf(sz,"总线-");
+            break;
+        case mod:
+            sprintf(sz,"设备-");
+            break;
+        case req:
+            sprintf(sz,"命令-");
+            break;
+         default:
+            sprintf(sz,"一般性错误-");
+            break;
+        }
+        switch(exception_code)
+        {
+        case 1:
+            strcat(sz,"最多支持16条总线");
+            break;
+        case 2:
+            strcat(sz,"遥信、遥测、电度数据总数越界");
+            break;
+        case 100:
+            strcat(sz,"串口参数错误");
+            break;
+        case 1000:
+            strcat(sz,"模块号只能在1-63之间");
+            break;
+        case 10000:
+            strcat(sz,"命令码必须在1-16之间");
+            break;
+        case 10001:
+            strcat(sz,"寄存器首地址必须在0-9999之间");
+            break;
+        case 10002:
+            strcat(sz,"寄存器长度必须在1-127之间");
+            break;
+        case 10003:
+            strcat(sz,"解析数据个数错误");
+            break;
+        case 10004:
+            strcat(sz,"解析数据电力类型错误");
+            break;
+        case 10005:
+            strcat(sz,"解析数据起始偏移错误");
+            break;
+        case 10006:
+            strcat(sz,"解析数据位宽错误");
+            break;
+        case 10007:
+            strcat(sz,"解析数据字节顺序错误");
+            break;
+        case 10008:
+            strcat(sz,"解析数据类型错误");
+            break;
+        default:
+            break;
+
+        }
+        return sz ;
+    }
 };
 
 class  AbstractConfObject
@@ -49,6 +132,7 @@ public:
 public:
     virtual void check() = 0 ;
 public:
+
       int dataNums[END] ;
 
 };
@@ -62,6 +146,56 @@ public:
 
 public:
     void check(){
+        if(reqType<1||reqType>16)
+        {
+            ConfObjectException e(ConfObjectException::req,10000);
+            BOOST_THROW_EXCEPTION(e);
+        }
+        if(reg<0||reg>9999)
+        {
+            ConfObjectException e(ConfObjectException::req,10001);
+            BOOST_THROW_EXCEPTION(e);
+        }
+        if(num<0||(reqType==1&&num>1016)||(reqType==2&&num>1016)||(reqType==3&&num>127)||(reqType==4&&num>127))
+        {
+            ConfObjectException e(ConfObjectException::req,10002);
+            BOOST_THROW_EXCEPTION(e);
+        }
+        for(size_t n = 0 ;n < parses.size();n++)
+        {
+            if(parses[n].dataNums<0||(parses[n].dataNums*parses[n].dataSize)/16>num)
+            {
+                ConfObjectException e(ConfObjectException::req,10003);
+                BOOST_THROW_EXCEPTION(e);
+            }
+            if(parses[n].powerType!=1&&parses[n].powerType!=2&&parses[n].powerType!=3)
+            {
+                ConfObjectException e(ConfObjectException::req,10004);
+                BOOST_THROW_EXCEPTION(e);
+            }
+            if(parses[n].startIndex<0||parses[n].startIndex>=num)
+            {
+                ConfObjectException e(ConfObjectException::req,10005);
+                BOOST_THROW_EXCEPTION(e);
+            }
+            if(parses[n].dataSize!=1&&parses[n].dataSize!=8&&parses[n].dataSize!=16&&parses[n].dataSize!=32)
+            {
+                ConfObjectException e(ConfObjectException::req,10006);
+                BOOST_THROW_EXCEPTION(e);
+            }
+            if(parses[n].dataOrder!=21&&parses[n].dataOrder!=12&&parses[n].dataOrder!=2143&&parses[n].dataOrder!=1234
+                    &&parses[n].dataOrder!=3412&&parses[n].dataOrder!=4321)
+            {
+                ConfObjectException e(ConfObjectException::req,10007);
+                BOOST_THROW_EXCEPTION(e);
+            }
+            if(parses[n].dataType!=1&&parses[n].dataType!=2&&parses[n].dataType!=3)
+            {
+                ConfObjectException e(ConfObjectException::req,10008);
+                BOOST_THROW_EXCEPTION(e);
+            }
+
+        }
     }
 
     vector<Parse> parses ;
@@ -75,6 +209,11 @@ public:
 
 public:
     void check(){
+        if(addr<1||addr>63)
+        {
+            ConfObjectException e(ConfObjectException::mod,1000);
+            BOOST_THROW_EXCEPTION(e);
+        }
         for(size_t n = 0 ;n<reqs.size();n++)
             reqs[n].check();
     }
@@ -96,6 +235,11 @@ public:
 
 public:
     void check(){
+        if(baud<300||baud>115200||databits<6||databits>8||stopbits<1||stopbits>3||(parity!='N'&&parity!='E'&&parity!='O'))
+        {
+            ConfObjectException e(ConfObjectException::bus,100);
+            BOOST_THROW_EXCEPTION(e);
+        }
         for(size_t n = 0 ;n<modules.size();n++)
             modules[n].check();
     }
@@ -110,10 +254,7 @@ public:
     int         bus_number ;
 
 public:
-    void check(){
-        for(size_t n = 0 ; n< busLines.size();n++)
-            busLines[n].check();
-    }
+    void check();
 
 
 public:
