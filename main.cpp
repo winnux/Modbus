@@ -145,6 +145,17 @@ void workerThread(void* p)
         int ret ;
         memset( dest, 0, 1024 );
 
+
+
+        //test only
+        dest[0] = 0x01 ;dest[1] = 0x02 ;
+        char* p = (char*)map_ptr[0]->get_address();
+        memcpy(p,dest16,10) ;
+        //
+
+
+
+
         for(size_t i = 0 ;i < bus->modules.size();i++)
         {
             for(size_t j = 0 ; j<bus->modules[i].reqs.size();j++)
@@ -283,7 +294,7 @@ int main()
     EZLOGGERVLSTREAM(axter::log_regularly)<<"Program started"<<std::endl ;
     if(!initSharedMemory())
     {
-        EZLOGGERVLSTREAM(axter::log_regularly)<<"内存错误，退出"<<std::endl ;
+        EZLOGGERVLSTREAM(axter::log_regularly)<<"内存错误"<<std::endl ;
         return 1;
     }
     breakHandle();
