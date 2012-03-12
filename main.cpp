@@ -22,7 +22,7 @@ using namespace std;
 using boost::asio::ip::tcp;
 
 //Shared memory object pointer
-boost::shared_ptr<shared_memory_object>  sharedMem(new shared_memory_object(open_or_create,"MemoryCache",read_write)) ;
+boost::shared_ptr<shared_memory_object>  sharedMem;
 //Each type has a memory map pointer
 boost::shared_ptr<mapped_region>    map_ptr[END] ;
 
@@ -223,10 +223,16 @@ void freeSharedMemroy()
     //open or the file is still memory mapped by other processes:
     sharedMem->remove("MemoryCache");
 }
+boost::shared_ptr<shared_memory_object> createSharedMemoryObject()
+{
+    boost::shared_ptr<shared_memory_object> p(new shared_memory_object(open_or_create,"MemoryCache",read_write)) ;
+    return p ;
+}
 
 bool initSharedMemory()
 {
     try{
+        sharedMem = createSharedMemoryObject();
         sharedMem->truncate(TOTAL_MEM_REQ);
         boost::shared_ptr<mapped_region>  yx_ptr(new mapped_region(*sharedMem,read_write,0,MAX_YX_NUM*YX_VAR_LEN)) ;
         boost::shared_ptr<mapped_region>  yc_ptr(new mapped_region(*sharedMem,read_write,MAX_YX_NUM*YX_VAR_LEN,
