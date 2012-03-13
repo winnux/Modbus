@@ -68,13 +68,23 @@ private:
                       memcpy(data_+8+length,rawCommDatas[com][i].data,rawCommDatas[com][i].length) ;
                       length += rawCommDatas[com][i].length ;
                       if(rawCommDatas[com][i].isRecv)
-                      {
-                          data_[8+length]  = ';' ;//每个接收后增加一个分号标志
-                          length++ ;
+                      {//\n\n
+                          data_[8+length]=0x5c;
+                          data_[8+length+1]=0x6e;
+                          data_[8+length+2]=0x5c;
+                          data_[8+length+3]=0x6e;
+                          //data_[8+length]  = ';' ;
+                          //length++ ;
+                          length+=4 ;
                       }else
                       {
-                          data_[8+length] =',';    //每个发送后加一个逗号
-                          length++;
+                          //data_[8+length] =',';    //每个发送后加一个逗号
+                          //length++;
+                          data_[8+length]=0x5c;
+                          data_[8+length+1]=0x74;
+                          data_[8+length+2]=0x5c;
+                          data_[8+length+3]=0x74;
+                          length+=4;
                       }
                   }
                   rawCommDatas[com].clear() ;

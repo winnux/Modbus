@@ -16,9 +16,9 @@ using namespace std;
 #define MAX_YC_NUM  10000
 #define MAX_DD_NUM  1024
 
-#define YX_VAR_LEN  2
-#define YC_VAR_LEN  5
-#define DD_VAR_LEN  5
+#define YX_VAR_LEN  1
+#define YC_VAR_LEN  4
+#define DD_VAR_LEN  4
 
 #define TOTAL_MEM_REQ   (MAX_YX_NUM*YX_VAR_LEN+MAX_YC_NUM*YC_VAR_LEN+MAX_DD_NUM*DD_VAR_LEN)
 
@@ -30,13 +30,15 @@ struct Parse
 public:
     int dataNums ;       //数据个数
     int powerType ;      //数据电力系统类型（1-遥信；2-遥测；3-电度）
-    int startIndex ;     //数据起始地址（在本桢内相对偏移）
+    int startIndex ;     //数据起始地址（在本桢内相对偏移）,只以字节为单位(注意，即使是使用1，2命令要来的遥信，此处偏移配置也以字节为基准）
     int dataSize ;       //数据位宽(1,8,16,32)
     int dataOrder ;      //数据字节顺序(位宽为16，32时标明数据高低字节顺序,可取值4321、3412、1234、2143、12、21）
     int dataType ;       //数据类型（1,2,3分别代表有符号、无符号整形，浮点数）
     float  baseVar ;     //基值
     float  mulVar ;      //乘数
     float  deadBand ;    //死区
+
+    int  dataOffset ;    //本组数据在所属查询命令里面对应数据类型的偏移地址
 };
 class ConfObjectException : public std::exception
 {
@@ -114,6 +116,15 @@ public:
         case 10008:
             strcat(sz,"解析数据类型错误");
             break;
+        case 10009:
+            strcat(sz,"IEEE754浮点数必须占用32位宽");
+            break;
+        case 10010:
+            strcat(sz,"模拟量数据位宽最小16");
+            break;
+        case 10011:
+            strcat(sz,"数字量最大可用位宽为8");
+            break;
         default:
             break;
 
@@ -127,13 +138,18 @@ class  AbstractConfObject
 public:
     AbstractConfObject(){
         for(int i= 0 ;i< END ;i++)
-            dataNums [i] = 0 ;
+         {
+             dataOffset [i]= 0 ;
+             dataNums [i] = 0 ;
+         }
     }
 public:
+   // virtual int     getOffset(int t,int m=0,int r=0,int p=0);
     virtual void check() = 0 ;
 public:
 
       int dataNums[END] ;
+      int dataOffset[END] ;
 
 };
 
@@ -156,7 +172,7 @@ public:
             ConfObjectException e(ConfObjectException::req,10001);
             BOOST_THROW_EXCEPTION(e);
         }
-        if(num<0||(reqType==1&&num>1016)||(reqType==2&&num>1016)||(reqType==3&&num>127)||(reqType==4&&num>127))
+        if(num<0||(reqType==1&&num>1980)||(reqType==2&&num>1980)||(reqType==3&&num>127)||(reqType==4&&num>127))
         {
             ConfObjectException e(ConfObjectException::req,10002);
             BOOST_THROW_EXCEPTION(e);
@@ -173,7 +189,7 @@ public:
                 ConfObjectException e(ConfObjectException::req,10004);
                 BOOST_THROW_EXCEPTION(e);
             }
-            if(parses[n].startIndex<0||parses[n].startIndex>=num)
+            if(parses[n].startIndex<0||parses[n].startIndex>=num*2)
             {
                 ConfObjectException e(ConfObjectException::req,10005);
                 BOOST_THROW_EXCEPTION(e);
@@ -192,6 +208,21 @@ public:
             if(parses[n].dataType!=1&&parses[n].dataType!=2&&parses[n].dataType!=3)
             {
                 ConfObjectException e(ConfObjectException::req,10008);
+                BOOST_THROW_EXCEPTION(e);
+            }
+            if(parses[n].dataType==3&&parses[n].dataSize!=32)
+            {
+                ConfObjectException e(ConfObjectException::req,10009);
+                BOOST_THROW_EXCEPTION(e);
+            }
+            if(parses[n].powerType!=1&&parses[n].dataSize<16)
+            {
+                ConfObjectException e(ConfObjectException::req,10010);
+                BOOST_THROW_EXCEPTION(e);
+            }
+            if(parses[n].powerType==1&&parses[n].dataSize>8)
+            {
+                ConfObjectException e(ConfObjectException::req,10011);
                 BOOST_THROW_EXCEPTION(e);
             }
 
@@ -230,7 +261,25 @@ public:
     int           databits ;
     int           stopbits ;
     char          parity ;
+public:
 
+    int     getOffset(int t,int m=-1,int r=-1,int p=-1)
+    {
+        if(m==-1)
+        {
+            return dataOffset[t] ;
+        }else if(r==-1)
+        {
+            return dataOffset[t]+modules[m].dataOffset[t];
+        }else if(p==-1)
+        {
+            return dataOffset[t]+modules[m].dataOffset[t]+modules[m].reqs[r].dataOffset[t];
+        }else
+        {
+            return dataOffset[t]+modules[m].dataOffset[t]+modules[m].reqs[r].dataOffset[t]+
+                    modules[m].reqs[r].parses[p].dataOffset;
+        }
+    }
 
 
 public:

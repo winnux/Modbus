@@ -1,5 +1,6 @@
 #include <iostream>
 #include <vector>
+#include <bitset>
 #include <exception>
 #include "modbus.h"
 #include "modbus-private.h"
@@ -138,19 +139,19 @@ void workerThread(void* p)
         cout<<"connect "<<bus->sPort<<" error"<<endl ;
         return  ;
     }
-    uint8_t dest[1024];
+    uint8_t dest[2048];
     uint16_t * dest16 = (uint16_t *) dest;
     while(!bQuit)
     {
         int ret ;
-        memset( dest, 0, 1024 );
+        memset( dest, 0, 2048 );
 
 
 
         //test only
-        dest[0] = 0x01 ;dest[1] = 0x02 ;
-        char* p = (char*)map_ptr[0]->get_address();
-        memcpy(p,dest16,10) ;
+//        dest[0] = 0x01 ;dest[1] = 0x02 ;
+//        char* p = (char*)map_ptr[1]->get_address();
+//        memcpy(p,dest16,10) ;
         //
 
 
@@ -181,12 +182,89 @@ void workerThread(void* p)
                 {
                     for(size_t n = 0 ; n < bus->modules[i].reqs[j].parses.size();n++)
                     {
+                        float f ;
                         char* p = (char*)map_ptr[bus->modules[i].reqs[j].parses[n].powerType-1]->get_address();
-                        memcpy(p,dest16,bus->modules[i].reqs[j].num*2) ;
+                        if(bus->modules[i].reqs[j].parses[n].powerType==1
+                                &&(bus->modules[i].reqs[j].reqType==2||bus->modules[i].reqs[j].reqType==1))
+                        {
+                            //使用1，2命令码时可直接拷贝，返回数据就是byte型
+                            memcpy(p+bus->getOffset(yx,i,j,n),dest+bus->modules[i].reqs[j].parses[n].startIndex,
+                                   bus->modules[i].reqs[j].parses[n].dataNums);
+                        }else
+                        {
+                            for(int m = 0 ;m< bus->modules[i].reqs[j].parses[n].dataNums ;m++)
+                            {
+                                switch(bus->modules[i].reqs[j].parses[n].powerType)
+                                {
+                                    case 1:
+                                    {
+                                        //使用3，4读取遥信，需要按位转换为byte
+                                        bitset<8> b(dest[bus->modules[i].reqs[j].parses[n].startIndex+m/8]);
+                                        if(b.test(m%8))
+                                            p[bus->getOffset(yx,i,j,n)+m] = 0x01 ;
+                                        else
+                                            p[bus->getOffset(yx,i,j,n)+m] = 0x00 ;
+                                    }
+                                    break;
+                                case 2:
+                                    if(bus->modules[i].reqs[j].parses[n].dataType==3)
+                                    {
+                                        memcpy(&f,dest+bus->modules[i].reqs[j].parses[n].startIndex+m*4,4);
+
+                                    }
+                                    else
+                                    {
+                                        int itmp ;
+                                        if(bus->modules[i].reqs[j].parses[n].dataSize==16)
+                                        {
+                                            itmp = dest16[bus->modules[i].reqs[j].parses[n].startIndex/2+m] ;
+                                        }
+                                        else
+                                        {
+                                            memcpy(&itmp,dest+bus->modules[i].reqs[j].parses[n].startIndex+m*4,4);
+                                        }
+                                        f = itmp ;
+                                    }
+                                    f = f*bus->modules[i].reqs[j].parses[n].mulVar+bus->modules[i].reqs[j].parses[n].baseVar ;
+                                {
+                                    int offset = bus->getOffset(yc,i,j,n);
+                                    memcpy(p+(offset+m)*4,&f,4);
+                                }
+                                break;
+                                case 3:
+                                    if(bus->modules[i].reqs[j].parses[n].dataType==3)
+                                    {
+                                        memcpy(&f,dest+bus->modules[i].reqs[j].parses[n].startIndex+m*4,4);
+
+                                    }
+                                    else
+                                    {
+                                        int itmp ;
+                                        if(bus->modules[i].reqs[j].parses[n].dataSize==16)
+                                        {
+                                            itmp = dest16[bus->modules[i].reqs[j].parses[n].startIndex/2+m] ;
+                                        }
+                                        else
+                                        {
+                                            memcpy(&itmp,dest+bus->modules[i].reqs[j].parses[n].startIndex+m*4,4);
+                                        }
+                                        f = itmp ;
+                                    }
+                                    f = f*bus->modules[i].reqs[j].parses[n].mulVar+bus->modules[i].reqs[j].parses[n].baseVar ;
+                                {
+                                    int offset = bus->getOffset(dd,i,j,n);
+                                    memcpy(p+(offset+m)*4,&f,4);
+                                }
+                                break;
+                                }
+
+                            }
+                        }
+                        //memcpy(p,dest16+bus->modules[i].reqs[j].parses[n].startIndex,bus->modules[i].reqs[j].) ;
                     }
                 }
 
-                boost::this_thread::sleep(boost::posix_time::milliseconds(100));
+                boost::this_thread::sleep(boost::posix_time::milliseconds(10));
             }
         }
     }

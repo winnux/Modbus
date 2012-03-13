@@ -41,6 +41,7 @@ bool Config::load()
                 BOOST_FOREACH(ptree::value_type &v3,v2.second.get_child("DataParses"))
                 {
                     Parse p ;
+                    p.dataOffset = 0 ;
 
                     p.dataNums = v3.second.get<int>("DataNums");
                     p.baseVar = v3.second.get<float>("BaseVar");
@@ -51,23 +52,35 @@ bool Config::load()
                     p.mulVar = v3.second.get<float>("MulVar");
                     p.startIndex =v3.second.get<int>("StartIndex");
                     p.powerType = v3.second.get<int>("PowerType");
+                    if(p.powerType>0&&p.powerType<END)
+                        p.dataOffset += r.dataNums[p.powerType-1];
+                    else
+                        p.dataOffset = 0 ;
                     r.parses.push_back(p);
-                    r.dataNums[p.powerType-1] += p.dataNums ;
-                }
+                    if(p.powerType>0&&p.powerType<END)
+                        r.dataNums[p.powerType-1] += p.dataNums ;
 
+                }
+                for(int i = 0; i< END ;i++)
+                    r.dataOffset[i] += m.dataNums[i] ;
                 m.reqs.push_back(r);
                 for(int i = 0 ; i< END ;i++)
                     m.dataNums[i] += r.dataNums[i];
+            }
+            for(int i = 0;i<END ;i++)
+            {
+                m.dataOffset[i] += bus.dataNums[i] ;
             }
             bus.modules.push_back(m);
             for(int i =0 ;i < END ;i++)
                 bus.dataNums[i]  += m.dataNums[i] ;
 
         }
-
+        for(int i= 0 ;i<END ;i++)
+            dataOffset[i] += bus.dataNums[i] ;
         busLines.push_back(bus);
         for(int i = 0; i< END ;i++)
-            dataNums[i] = bus.dataNums[i];
+            dataNums[i] += bus.dataNums[i];
     }
     check();
     return true ;
