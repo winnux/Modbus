@@ -7,11 +7,7 @@
 #include "NetServer.h"
 #include "config.h"
 
-#ifndef _MSC_VER
 #include <signal.h>
-
-#endif
-
 
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/interprocess/mapped_region.hpp>
@@ -105,18 +101,7 @@ void busMonitorRecvData(uint8_t * data, uint8_t dataLen,int addNewLine )
 }
 
 }
-#if defined(_WIN32)
-BOOL WINAPI controlHandler(DWORD t)
-{
-    if(t==CTRL_BREAK_EVENT||t==CTRL_C_EVENT)
-        bQuit = true ;
-    for(size_t i = 0 ;i < threads.size();i++)
-        threads[i]->join();
-    exit(1);
-    return true ;
-}
 
-#else
 void controlHandler(int)
 {
     bQuit = true ;
@@ -124,9 +109,6 @@ void controlHandler(int)
         threads[i]->join();
     exit(1);
 }
-
-#endif
-
 
 void workerThread(void* p)
 {
@@ -271,20 +253,6 @@ void workerThread(void* p)
     modbus_close(modbus);
     modbus_free(modbus);
 }
-void breakHandle()
-{
-#if defined(_WIN32)
-    SetConsoleCtrlHandler(controlHandler, true);
-#else
-    struct sigaction act;
-    memset (&act, '\0', sizeof(act));
-    act.sa_handler = &controlHandler;
-    if (sigaction(SIGINT, &act, NULL) < 0) {
-            cout<<"set break handler sig error"<<endl;
-    }
-#endif
-}
-
 
 //comm data monitor server thread
 void monitorThread()
@@ -375,7 +343,7 @@ int main()
         EZLOGGERVLSTREAM(axter::log_regularly)<<"内存错误"<<std::endl ;
         return 1;
     }
-    breakHandle();
+    signal (SIGINT, controlHandler);
     try{
         config.load();
     }catch(exception &e)
