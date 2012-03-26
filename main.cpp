@@ -101,12 +101,20 @@ void busMonitorRecvData(uint8_t * data, uint8_t dataLen,int addNewLine )
 }
 
 }
-
+void freeSharedMemroy()
+{
+    //The remove operation might fail returning false
+    //if the shared memory does not exist, the file is
+    //open or the file is still memory mapped by other processes:
+    sharedMem->remove("MemoryCache");
+}
 void controlHandler(int)
 {
     bQuit = true ;
     for(size_t i = 0 ;i < threads.size();i++)
         threads[i]->join();
+    freeSharedMemroy();
+    EZLOGGERVLSTREAM(axter::log_regularly)<<"Program exited"<<std::endl ;
     exit(1);
 }
 
@@ -273,13 +281,7 @@ void monitorThread()
         cout<<"Exception:"<<e.what()<<endl ;
     }
 }
-void freeSharedMemroy()
-{
-    //The remove operation might fail returning false
-    //if the shared memory does not exist, the file is
-    //open or the file is still memory mapped by other processes:
-    sharedMem->remove("MemoryCache");
-}
+
 boost::shared_ptr<shared_memory_object> createSharedMemoryObject()
 {
     boost::shared_ptr<shared_memory_object> p(new shared_memory_object(open_or_create,"MemoryCache",read_write)) ;
