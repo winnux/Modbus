@@ -6,7 +6,7 @@
 #include "modbus-private.h"
 #include "NetServer.h"
 #include "config.h"
-
+#include <strings.h>
 #include <signal.h>
 
 #include <boost/interprocess/managed_shared_memory.hpp>
@@ -23,6 +23,7 @@ boost::shared_ptr<shared_memory_object>  sharedMem;
 //Each type has a memory map pointer
 boost::shared_ptr<mapped_region>    map_ptr[END] ;
 
+char gdir[256] ;
 bool bQuit = false ;
 bool showCommData =false ;
 RAW_COMM_DATA recv_raw ;
@@ -102,13 +103,7 @@ void busMonitorRecvData(uint8_t * data, uint8_t dataLen,int addNewLine )
 
 }
 
-void controlHandler(int)
-{
-    bQuit = true ;
-    for(size_t i = 0 ;i < threads.size();i++)
-        threads[i]->join();
-    exit(1);
-}
+
 
 void workerThread(void* p)
 {
@@ -333,9 +328,28 @@ bool initSharedMemory()
 //    }
     return true ;
 }
-
-int main()
+void controlHandler(int)
 {
+    bQuit = true ;
+    for(size_t i = 0 ;i < threads.size();i++)
+        threads[i]->join();
+
+    freeSharedMemroy();
+    EZLOGGERVLSTREAM(axter::log_regularly)<<"Program exited"<<std::endl ;
+    exit(1);
+}
+
+int main(int argc , char *argv[])
+{
+    //strcpy(gdir,argv[0]);
+    readlink("/proc/self/exe",gdir,256);
+    char* p = strrchr(gdir,'/');
+    if(p)
+    {
+        int k = strlen(gdir);
+        int n = strlen(p);
+        gdir[k-n]='\0';
+    }
     //EZLOGGERVLSTREAM(axter::levels(axter::log_regularly,axter::debug))<<"Program started"<<std::endl ;
     EZLOGGERVLSTREAM(axter::log_regularly)<<"Program started"<<std::endl ;
     if(!initSharedMemory())

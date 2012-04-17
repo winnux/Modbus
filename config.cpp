@@ -1,5 +1,6 @@
 #include "config.h"
 
+extern char gdir[256] ;
 Config::Config()
 {
 }
@@ -7,7 +8,11 @@ bool Config::load()
 {
     using boost::property_tree::ptree;
     ptree pt ;
-    read_xml("configuration.xml",pt);
+    char dir[256];
+    strcpy(dir,gdir);
+    strcat(dir,"/modbus.xml");
+    //read_xml("modbus.xml",pt);
+    read_xml(dir,pt);
     bus_number = pt.get<int>("Config.BusTotal");
 
     BOOST_FOREACH(ptree::value_type &v,pt.get_child("Config.Lines"))
