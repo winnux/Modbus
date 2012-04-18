@@ -341,8 +341,11 @@ void controlHandler(int)
 
 int main(int argc , char *argv[])
 {
-    //strcpy(gdir,argv[0]);
+#if defined(_WIN32)
+    strcpy(gdir,argv[0]);
+#else
     readlink("/proc/self/exe",gdir,256);
+#endif
     char* p = strrchr(gdir,'/');
     if(p)
     {

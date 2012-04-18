@@ -10,7 +10,11 @@ bool Config::load()
     ptree pt ;
     char dir[256];
     strcpy(dir,gdir);
+#if defined(_WIN32)
+    strcat(dir,"\\modbus.xml");
+#else
     strcat(dir,"/modbus.xml");
+#endif
     //read_xml("modbus.xml",pt);
     read_xml(dir,pt);
     bus_number = pt.get<int>("Config.BusTotal");
