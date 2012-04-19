@@ -70,12 +70,20 @@ void busMonitorSendData(uint8_t *data,uint8_t dataLen)
 
 void busMonitorRecvData(uint8_t * data, uint8_t dataLen,int addNewLine )
 {
+    if(recv_raw.length+dataLen>=255)
+    {
+        //某些时候客户端关闭时接收到不完全的数据包，再连接上会把新数据包一直追加
+        //在旧缓存后面，容易产生数据越界问题。
+        recv_raw.length = 0 ;
+        return ;
+    }
     memcpy(recv_raw.data+recv_raw.length,data,dataLen);
     recv_raw.length += dataLen ;
     if(addNewLine)
     {
         recv_raw.isRecv = 1 ;
         int com = getCommPortByAddr(recv_raw.data[0]) ;
+        if(com>=0&&com<MAX_PORT_NUM)//某些时候串口里面出现干扰字符
         {
             boost::mutex::scoped_lock lock(commData_mutex[com]) ;
             if(rawCommDatas.find(com)!=rawCommDatas.end())
