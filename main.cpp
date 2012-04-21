@@ -213,7 +213,10 @@ void workerThread(void* p)
                                         }
                                         else
                                         {
-                                            memcpy(&itmp,dest+bus->modules[i].reqs[j].parses[n].startIndex+m*4,4);
+                                            unsigned char *p = (unsigned char*)&itmp ;
+                                           // memcpy(&itmp,dest+bus->modules[i].reqs[j].parses[n].startIndex+m*4,4);
+                                            memcpy(p,dest+bus->modules[i].reqs[j].parses[n].startIndex+m*4+2,2);
+                                            memcpy(p+2,dest+bus->modules[i].reqs[j].parses[n].startIndex+m*4,2);
                                         }
                                         f = itmp ;
                                     }
