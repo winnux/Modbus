@@ -31,6 +31,8 @@ RAW_COMM_DATA recv_raw ;
 Config config ;
 vector < boost::shared_ptr<boost::thread> > threads ;
 
+char origin_yk_buf[MAX_YK_NUM*YK_VAR_LEN];
+
 int getCommPortByAddr(uint8_t addr)
 {
         for(size_t n = 0;n<config.busLines.size();n++)
@@ -168,6 +170,24 @@ void workerThread(void* p)
                 case _FC_READ_INPUT_REGISTERS:
                     ret = modbus_read_input_registers( modbus, bus->modules[i].reqs[j].reg, bus->modules[i].reqs[j].num, dest16 );
                     break;
+                case _FC_WRITE_SINGLE_COIL:
+                    {
+                        char * p = (char*)map_ptr[yk]->get_address();
+                        for(int n = 0 ;n<YK_NUMS ;n++)
+                        {
+                            if(p[n]!=origin_yk_buf[n])
+                            {
+                                ret = modbus_write_bit( modbus, bus->modules[i].reqs[j].reg+n,p[n]);
+                                origin_yk_buf[n] = p[n];
+                                break;
+                            }
+                        }
+                    }
+                    break;
+                }
+                if(bus->modules[i].reqs[j].reqType==_FC_WRITE_SINGLE_COIL)
+                {
+                    continue ;
                 }
                 //parse data
                 if(ret!=-1)
@@ -303,12 +323,16 @@ bool initSharedMemory()
                                                                    MAX_YC_NUM*YC_VAR_LEN)) ;
         boost::shared_ptr<mapped_region>  dd_ptr(new mapped_region(*sharedMem,read_write,MAX_YX_NUM*YX_VAR_LEN+MAX_YC_NUM*YC_VAR_LEN,
                                                                    MAX_DD_NUM*DD_VAR_LEN)) ;
-        map_ptr[0] = yx_ptr;
-        map_ptr[1] = yc_ptr;
-        map_ptr[2] = dd_ptr ;
+        boost::shared_ptr<mapped_region>  yk_ptr(new mapped_region(*sharedMem,read_write,MAX_YX_NUM*YX_VAR_LEN+MAX_YC_NUM*YC_VAR_LEN+MAX_DD_NUM*DD_VAR_LEN,
+                                                                   MAX_YK_NUM*YK_VAR_LEN)) ;
+        map_ptr[yx] = yx_ptr;
+        map_ptr[yc] = yc_ptr;
+        map_ptr[dd] = dd_ptr ;
+        map_ptr[yk] = yk_ptr;
         yx_ptr.reset();
         yc_ptr.reset();
         dd_ptr.reset();
+        yk_ptr.reset();
 
     }catch(interprocess_exception &e)
     {
@@ -317,8 +341,13 @@ bool initSharedMemory()
         EZLOGGERVLSTREAM(axter::levels(axter::log_always,axter::debug))<<p<<std::endl ;
         return false ;
     }
+    memset(origin_yk_buf,0,MAX_YK_NUM*YK_VAR_LEN);
 
-
+    ////for test only
+//    origin_yk_buf[0] = origin_yk_buf[1] = origin_yk_buf[2] = origin_yk_buf[3] = 1 ;
+//    char* p = (char*)map_ptr[yk]->get_address();
+//    p[0] = p[1] = p[2]=p[3]= 1 ;
+    ////
 
 //    try{
 
